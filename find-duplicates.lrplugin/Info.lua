@@ -19,13 +19,13 @@ return {
 
 	LrToolkitIdentifier = "com.tjotala.lightroom.find-duplicates",
 
-	LrPluginName = LOC "$$$/FindDuplicates/PluginName=Find Duplicates",
+	LrPluginName = LOC( "$$$/FindDuplicates/PluginName=Find Duplicates" ),
 	
 	-- Add the menu item to the File menu.
 	
 	LrExportMenuItems = {
 	    {
-		    title = LOC "$$$/FindDuplicates/LibraryMenuItem=Find Duplicates",
+		    title = LOC( "$$$/FindDuplicates/LibraryMenuItem=Find Duplicates" ),
 		    file = "FindDuplicatesMenuItem.lua",
 		},
 	},
@@ -34,7 +34,7 @@ return {
 	
 	LrLibraryMenuItems = {
 	    {
-		    title = LOC "$$$/FindDuplicates/LibraryMenuItem=Find Duplicates",
+		    title = LOC( "$$$/FindDuplicates/LibraryMenuItem=Find Duplicates" ),
 		    file = "FindDuplicatesMenuItem.lua",
 		},
 	},

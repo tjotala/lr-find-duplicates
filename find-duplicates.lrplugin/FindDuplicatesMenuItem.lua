@@ -38,10 +38,10 @@ local function findDuplicates()
 		function( )
 			local catalog = LrApplication.activeCatalog()
 			local collection = nil
-			catalog:withWriteAccessDo( LOC "$$$/FindDuplicates/ActionName=Find Duplicates",
+			catalog:withWriteAccessDo( LOC( "$$$/FindDuplicates/ActionName=Find Duplicates" ),
 				function( context )
 					-- Create the target collection, if it doesn't already exist
-					collection = catalog:createCollection( LOC "$$$/FindDuplicates/CollectionName=Found Duplicates", nil, true )
+					collection = catalog:createCollection( LOC( "$$$/FindDuplicates/CollectionName=Found Duplicates" ), nil, true )
 				end
 			)
 
@@ -49,10 +49,10 @@ local function findDuplicates()
 				return
 			end
 
-			catalog:withWriteAccessDo( LOC "$$$/FindDuplicates/ActionName=Find Duplicates",
+			catalog:withWriteAccessDo( LOC( "$$$/FindDuplicates/ActionName=Find Duplicates" ),
 				function( context )
 					local progressScope = LrProgressScope {
-						title = LOC "$$$/FindDuplicates/ProgressScopeTitle=Finding Duplicates",
+						title = LOC( "$$$/FindDuplicates/ProgressScopeTitle=Finding Duplicates" ),
 						functionContext = context,
 					}
 					progressScope:setCancelable( true )
@@ -106,5 +106,3 @@ end
 --------------------------------------------------------------------------------
 -- Begin the search
 findDuplicates()
-
-
