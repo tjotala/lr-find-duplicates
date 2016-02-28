@@ -30,35 +30,35 @@ end
 -- Launch a background task to go find all duplicates in the active catalog
 -- The duplicates are added to a collection named "Found Duplicates"
 
+local function getTargetCollection( catalog )
+	local collection = nil
+	catalog:withWriteAccessDo( LOC( "$$$/FindDuplicates/GetTargetCollection=Creating Target Collection" ),
+		function( context )
+			-- Create the target collection, if it doesn't already exist
+			collection = catalog:createCollection( LOC( "$$$/FindDuplicates/CollectionName=Found Duplicates by Name" ), nil, true )
+
+			-- Clear the collection, if it isn't empty already
+			collection:removeAllPhotos()
+		end
+	)
+
+	return collection
+end
+
 local function findDuplicates()
-
-	trace( "findDuplicates: enter" )
-
 	LrTasks.startAsyncTask(
 		function( )
+			trace( "findDuplicates: enter" )
 			local catalog = LrApplication.activeCatalog()
-			local collection = nil
-			catalog:withWriteAccessDo( LOC( "$$$/FindDuplicates/ActionName=Find Duplicates" ),
-				function( context )
-					-- Create the target collection, if it doesn't already exist
-					collection = catalog:createCollection( LOC( "$$$/FindDuplicates/CollectionName=Found Duplicates" ), nil, true )
-				end
-			)
+			local collection = getTargetCollection(catalog)
 
-			if collection == nil then
-				return
-			end
-
-			catalog:withWriteAccessDo( LOC( "$$$/FindDuplicates/ActionName=Find Duplicates" ),
+			catalog:withWriteAccessDo( LOC( "$$$/FindDuplicates/ActionName=Find Duplicates by Name" ),
 				function( context )
 					local progressScope = LrProgressScope {
-						title = LOC( "$$$/FindDuplicates/ProgressScopeTitle=Finding Duplicates" ),
+						title = LOC( "$$$/FindDuplicates/ProgressScopeTitle=Finding Duplicates by Name" ),
 						functionContext = context,
 					}
 					progressScope:setCancelable( true )
-
-					-- Clear the collection first
-					collection:removeAllPhotos()
 
 					-- Enumerate through all selected photos in the catalog, searching for other photos with matching names
 					local photos = catalog:getTargetPhotos()
@@ -68,25 +68,32 @@ local function findDuplicates()
 							break
 						end
 
-						-- Update the progress bar
-						local fileName = photo:getFormattedMetadata( "fileName" )
-						progressScope:setCaption( fileName )
-						progressScope:setPortionComplete( i, #photos )
+						if not photo:getRawMetadata( "isVirtualCopy" ) then
+							-- Update the progress bar
+							local fileName = photo:getFormattedMetadata( "fileName" )
+							progressScope:setCaption( LOC( "$$$/FindDuplicates/ProgressCaption=^1 (^2 of ^3)", fileName, i, #photos ) )
+							progressScope:setPortionComplete( i, #photos )
 
-						trace( "photo %d of %d: %s", i, #photos, fileName )
+							trace( "photo %d of %d: %s", i, #photos, fileName )
 
-						-- Find all the dupes of this photo
-						local foundPhotos = catalog:findPhotos {
-							searchDesc = {
-								criteria = "filename",
-								operation = "==",
-								value = fileName,
+							-- Find all the dupes of this photo
+							local foundPhotos = catalog:findPhotos {
+								ascending = true,
+								searchDesc = {
+									criteria = "filename",
+									operation = "all",
+									value = fileName
+								}
 							}
-						}
 
-						if #foundPhotos > 1 then
-							trace( "found %d matching photos", #foundPhotos )
-							collection:addPhotos( foundPhotos )
+							if #foundPhotos > 1 then
+								trace( "found %d matching photos of %s", #foundPhotos, fileName )
+								for i, found in ipairs(foundPhotos) do
+									trace( "  matched: %s from %s", found:getFormattedMetadata( "fileName" ), found:getFormattedMetadata( "folderName" ) )
+								end
+								collection:addPhotos( foundPhotos )
+							end
+
 						end
 
 						LrTasks.yield()
@@ -94,13 +101,11 @@ local function findDuplicates()
 
 					progressScope:done()
 					catalog:setActiveSources { collection }
-
 				end
 			)
+			trace( "findDuplicates: exit" )
 		end
 	)
-	trace( "findDuplicates: exit" )
-	
 end
 
 --------------------------------------------------------------------------------
