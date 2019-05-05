@@ -5,7 +5,7 @@
 
 --------------------------------------------------------------------------------
 
-FindDuplicatesMenuItem.lua
+FindDuplicates.lua
 
 ------------------------------------------------------------------------------]]
 
@@ -34,28 +34,24 @@ local function getTargetCollection( catalog )
 	local collection = nil
 	catalog:withWriteAccessDo( LOC( "$$$/FindDuplicates/GetTargetCollection=Creating Target Collection" ),
 		function( context )
-			-- Create the target collection, if it doesn't already exist
-			collection = catalog:createCollection( LOC( "$$$/FindDuplicates/CollectionName=Found Duplicates by Name" ), nil, true )
-
-			-- Clear the collection, if it isn't empty already
+			collection = catalog:createCollection( LOC( "$$$/FindDuplicates/CollectionName=Found Duplicates" ), nil, true )
 			collection:removeAllPhotos()
 		end
 	)
-
 	return collection
 end
 
-local function findDuplicates()
+function FindDuplicatesEngine( getSearchCriteria )
 	LrTasks.startAsyncTask(
 		function( )
-			trace( "findDuplicates: enter" )
+			trace( "FindDuplicatesEngine enter" )
 			local catalog = LrApplication.activeCatalog()
-			local collection = getTargetCollection(catalog)
+			local collection = getTargetCollection( catalog )
 
-			catalog:withWriteAccessDo( LOC( "$$$/FindDuplicates/ActionName=Find Duplicates by Name" ),
+			catalog:withWriteAccessDo( LOC( "$$$/FindDuplicates/ActionName=Find Duplicates" ),
 				function( context )
 					local progressScope = LrProgressScope {
-						title = LOC( "$$$/FindDuplicates/ProgressScopeTitle=Finding Duplicates by Name" ),
+						title = LOC( "$$$/FindDuplicates/ProgressScopeTitle=Finding Duplicates" ),
 						functionContext = context,
 					}
 					progressScope:setCancelable( true )
@@ -65,49 +61,51 @@ local function findDuplicates()
 					trace( "searching %d photos", #photos )
 					for i, photo in ipairs(photos) do
 						if progressScope:isCanceled() then
+							trace( "operation canceled" )
 							break
 						end
 
-						if not photo:getRawMetadata( "isVirtualCopy" ) then
-							-- Update the progress bar
-							local fileName = photo:getFormattedMetadata( "fileName" )
-							progressScope:setCaption( LOC( "$$$/FindDuplicates/ProgressCaption=^1 (^2 of ^3)", fileName, i, #photos ) )
-							progressScope:setPortionComplete( i, #photos )
+						-- Update the progress bar
+						local fileName, label, criteria = getSearchCriteria( photo )
+						progressScope:setCaption( LOC( "$$$/FindDuplicates/ProgressCaption=^1 (^2 of ^3)", fileName, i, #photos ) )
+						progressScope:setPortionComplete( i, #photos )
 
-							trace( "photo %d of %d: %s", i, #photos, fileName )
+						if criteria then
+							trace( "find %d of %d '%s' by '%s'", i, #photos, fileName, label )
 
 							-- Find all the dupes of this photo
 							local foundPhotos = catalog:findPhotos {
+								sort = "fileName",
 								ascending = true,
-								searchDesc = {
-									criteria = "filename",
-									operation = "all",
-									value = fileName
-								}
+								searchDesc = criteria,
 							}
 
 							if #foundPhotos > 1 then
-								trace( "found %d matching photos of %s", #foundPhotos, fileName )
+								trace( "found %d matches of %s", #foundPhotos, fileName )
 								for i, found in ipairs(foundPhotos) do
-									trace( "  matched: %s from %s", found:getFormattedMetadata( "fileName" ), found:getFormattedMetadata( "folderName" ) )
+									if progressScope:isCanceled() then
+										trace( "operation canceled" )
+										break
+									end
+									trace( "  matched %s", found:getRawMetadata( "path" ) )
 								end
-								collection:addPhotos( foundPhotos )
+								if not progressScope:isCanceled() then
+									collection:addPhotos( foundPhotos )
+								end
 							end
 
 						end
 
-						LrTasks.yield()
+						if i % 10 == 0 then
+							LrTasks.yield()
+						end
 					end
 
 					progressScope:done()
 					catalog:setActiveSources { collection }
 				end
 			)
-			trace( "findDuplicates: exit" )
+			trace( "FindDuplicatesEngine exit" )
 		end
 	)
 end
-
---------------------------------------------------------------------------------
--- Begin the search
-findDuplicates()
