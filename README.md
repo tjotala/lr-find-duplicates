@@ -3,7 +3,7 @@
 ## Adobe Lightroom Plug-In
 
 This is a simple plug-in that finds duplicate photos (or videos) in Adobe Lightroom catalog, matching by the basename of each selected file.
-The duplicates it finds are added to a new collection named `Found Duplicates by Name`.
+The duplicates it finds are added to a new collection named `Found Duplicates`.
 
 ## Getting Started
 
